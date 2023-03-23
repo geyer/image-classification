@@ -1,0 +1,7 @@
+
+*.pyc
+*.ipynb
+
+# Exclude outputs from training runs.
+experiments/
+trials/
