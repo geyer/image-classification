@@ -1,31 +1,28 @@
 
 from torch import nn
 from torch.nn import functional as F
+import torch
+
 
 class Mlp(nn.Module):
     """Simple MLP with optional dropout after each layer."""
 
-    def __init__(self, dropout_rate=None):
+    def __init__(self, dims, p_dropout=None):
+        """An MLP for the given sequence of hidden layer dimensions."""
         super().__init__()
+        dims = (3 * 32 * 32,) + dims
         self.flatten = nn.Flatten()
-        if dropout_rate is not None:
-            self.layers = nn.Sequential(
-                nn.Linear(3*32*32, 512),
-                nn.Dropout(p=dropout_rate),
+        layers = []
+        for n_in, n_out in zip(dims, dims[1:]):
+            layers.extend([
+                nn.Linear(n_in, n_out),
                 nn.ReLU(),
-                nn.Linear(512, 512),
-                nn.Dropout(p=dropout_rate),
-                nn.ReLU(),
-                nn.Linear(512, 10),
-            )
-        else:
-            self.layers = nn.Sequential(
-                nn.Linear(3*32*32, 512),
-                nn.ReLU(),
-                nn.Linear(512, 512),
-                nn.ReLU(),
-                nn.Linear(512, 10),
-            )
+            ])
+            if p_dropout is not None:
+                layers.append(
+                    nn.Dropout(p=p_dropout))
+        layers.append(nn.Linear(dims[-1], 10))
+        self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
         x = self.flatten(x)

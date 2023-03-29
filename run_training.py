@@ -61,7 +61,7 @@ def train_with_config(config, base_dir=None):
 
     device = torch.device('cuda')
     if config.model_type == 'MLP':
-        model = Mlp(dropout_rate=config.dropout_rate)
+        model = Mlp(dims=(512, 512), p_dropout=config.dropout_rate)
     elif config.model_type == 'ResNet':
         model = ResidualNet()
 
