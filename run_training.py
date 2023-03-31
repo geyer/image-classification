@@ -17,7 +17,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from configs.trial_config import trial_config
-from models import Mlp, ResidualNet
+from models import Mlp, ResidualNet, MlpMixer
 
 
 def load_dataset(root='~/datasets', batch_size=64):
@@ -64,6 +64,9 @@ def train_with_config(config, base_dir=None):
         model = Mlp(dims=(512, 512), p_dropout=config.dropout_rate)
     elif config.model_type == 'ResNet':
         model = ResidualNet()
+    elif config.model_type == 'MlpMixer':
+        model = MlpMixer(patch_size=8, n_channels=64, n_tokens=16,
+                         channels_mlp_dim=128, tokens_mlp_dim=32, n_blocks=4)
 
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model_state_dict'])

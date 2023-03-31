@@ -2,6 +2,7 @@
 from torch import nn
 from torch.nn import functional as F
 import torch
+from einops.layers.torch import Rearrange
 
 
 class Mlp(nn.Module):
@@ -83,3 +84,56 @@ class ResidualNet(nn.Module):
 
     def forward(self, x):
         return self.layers(x)
+
+
+class MlpBlock(nn.Module):
+    def __init__(self, outer_dim, inner_dim):
+        super().__init__()
+        self.mlp1 = nn.Linear(outer_dim, inner_dim)
+        self.mlp2 = nn.Linear(inner_dim, outer_dim)
+
+    def forward(self, x):
+        x = self.mlp1(x)
+        x = F.gelu(x)
+        return self.mlp2(x)
+
+
+class MixerBlock(nn.Module):
+    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim):
+        super().__init__()
+        self.token_mixer = MlpBlock(n_tokens, tokens_mlp_dim)
+        self.channel_mixer = MlpBlock(n_channels, channels_mlp_dim)
+
+    def forward(self, x):
+        y = F.layer_norm(x, (x.shape[-1],))
+        y = torch.transpose(y, -1, -2)
+        y = self.token_mixer(y)
+        y = torch.transpose(y, -1, -2)
+        x = x + y
+        y = F.layer_norm(x, (x.shape[-1],))
+        y = self.channel_mixer(y)
+        return x + y
+
+
+class MlpMixer(nn.Module):
+    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim, patch_size, n_blocks):
+        super().__init__()
+        # Projects image into sequence of tokens.
+        self.projection = nn.Conv2d(
+            3, n_channels, kernel_size=patch_size, stride=patch_size)
+        # Change to batch x token x channel order.
+        layers = [Rearrange('b c h w -> b (h w) c')]
+        for _ in range(n_blocks):
+            layers.append(MixerBlock(n_tokens, n_channels,
+                          tokens_mlp_dim, channels_mlp_dim))
+        self.layers = nn.Sequential(*layers)
+        self.final = nn.Linear(n_channels, 10)
+        nn.init.zeros_(self.final.weight)
+
+    def forward(self, x):
+        x = self.projection(x)
+        x = self.layers(x)
+        x = F.layer_norm(x, (x.shape[-1],))
+        # Global average pooling along channel dimension.
+        x = torch.mean(x, dim=-2)
+        return self.final(x)
