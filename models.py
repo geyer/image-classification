@@ -109,16 +109,18 @@ class MixerBlock(nn.Module):
     def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim,
                  p_dropout):
         super().__init__()
+        self.layer_norm1 = nn.LayerNorm(n_channels)
         self.token_mixer = MlpBlock(n_tokens, tokens_mlp_dim, p_dropout)
+        self.layer_norm2 = nn.LayerNorm(n_channels)
         self.channel_mixer = MlpBlock(n_channels, channels_mlp_dim, p_dropout)
 
     def forward(self, x):
-        y = F.layer_norm(x, (x.shape[-1],))
+        y = self.layer_norm1(x)
         y = torch.transpose(y, -1, -2)
         y = self.token_mixer(y)
         y = torch.transpose(y, -1, -2)
         x = x + y
-        y = F.layer_norm(x, (x.shape[-1],))
+        y = self.layer_norm2(x)
         y = self.channel_mixer(y)
         return x + y
 
@@ -137,13 +139,14 @@ class MlpMixer(nn.Module):
                           tokens_mlp_dim, channels_mlp_dim,
                           p_dropout))
         self.layers = nn.Sequential(*layers)
+        self.layer_norm = nn.LayerNorm(n_channels)
         self.final = nn.Linear(n_channels, 10)
         nn.init.zeros_(self.final.weight)
 
     def forward(self, x):
         x = self.projection(x)
         x = self.layers(x)
-        x = F.layer_norm(x, (x.shape[-1],))
+        x = self.layer_norm(x)
         # Global average pooling along channel dimension.
         x = torch.mean(x, dim=-2)
         return self.final(x)
