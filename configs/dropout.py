@@ -19,7 +19,7 @@ def get_config():
             trial.epochs = 200
             trial.learning_rate = lr
             trial.momentum = momentum
-            trial.dropout_rate = p_dropout
+            trial.model_args.p_dropout = p_dropout
             trial.trial_name = f'lr{lr}_m{momentum}_dropout{p_dropout}'
             config.trials.append(trial)
     config.lock()

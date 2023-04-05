@@ -17,8 +17,7 @@ def get_config():
               ]
     config.trials = []
     for param in params:
-        trial = trial_config()
-        trial.model_type = 'ResNet'
+        trial = trial_config('ResNet')
         trial.update(**param)
         lr, momentum = param['learning_rate'], param['momentum']
         trial.trial_name = f'lr{lr}_m{momentum}'

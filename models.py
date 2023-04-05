@@ -87,22 +87,30 @@ class ResidualNet(nn.Module):
 
 
 class MlpBlock(nn.Module):
-    def __init__(self, outer_dim, inner_dim):
+    def __init__(self, outer_dim, inner_dim, p_dropout=None):
         super().__init__()
         self.mlp1 = nn.Linear(outer_dim, inner_dim)
+        self.dropout1 = nn.Dropout(p_dropout) if p_dropout else None
         self.mlp2 = nn.Linear(inner_dim, outer_dim)
+        self.dropout2 = nn.Dropout(p_dropout) if p_dropout else None
 
     def forward(self, x):
         x = self.mlp1(x)
+        if self.dropout1:
+            x = self.dropout1(x)
         x = F.gelu(x)
-        return self.mlp2(x)
+        x = self.mlp2(x)
+        if self.dropout2:
+            x = self.dropout2(x)
+        return x
 
 
 class MixerBlock(nn.Module):
-    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim):
+    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim,
+                 p_dropout):
         super().__init__()
-        self.token_mixer = MlpBlock(n_tokens, tokens_mlp_dim)
-        self.channel_mixer = MlpBlock(n_channels, channels_mlp_dim)
+        self.token_mixer = MlpBlock(n_tokens, tokens_mlp_dim, p_dropout)
+        self.channel_mixer = MlpBlock(n_channels, channels_mlp_dim, p_dropout)
 
     def forward(self, x):
         y = F.layer_norm(x, (x.shape[-1],))
@@ -116,7 +124,8 @@ class MixerBlock(nn.Module):
 
 
 class MlpMixer(nn.Module):
-    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim, patch_size, n_blocks):
+    def __init__(self, n_tokens, n_channels, tokens_mlp_dim, channels_mlp_dim, patch_size, n_blocks,
+                 p_dropout=None):
         super().__init__()
         # Projects image into sequence of tokens.
         self.projection = nn.Conv2d(
@@ -125,7 +134,8 @@ class MlpMixer(nn.Module):
         layers = [Rearrange('b c h w -> b (h w) c')]
         for _ in range(n_blocks):
             layers.append(MixerBlock(n_tokens, n_channels,
-                          tokens_mlp_dim, channels_mlp_dim))
+                          tokens_mlp_dim, channels_mlp_dim,
+                          p_dropout))
         self.layers = nn.Sequential(*layers)
         self.final = nn.Linear(n_channels, 10)
         nn.init.zeros_(self.final.weight)

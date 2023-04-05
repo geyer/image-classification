@@ -12,6 +12,7 @@ from tqdm import tqdm
 import torch
 from torch import optim
 from torch.nn import functional as F
+from torch.nn.utils import clip_grad_norm_
 from torchvision import datasets
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -61,12 +62,11 @@ def train_with_config(config, base_dir=None):
 
     device = torch.device('cuda')
     if config.model_type == 'MLP':
-        model = Mlp(dims=(512, 512), p_dropout=config.dropout_rate)
+        model = Mlp(**config.model_args)
     elif config.model_type == 'ResNet':
         model = ResidualNet()
     elif config.model_type == 'MlpMixer':
-        model = MlpMixer(patch_size=8, n_channels=64, n_tokens=16,
-                         channels_mlp_dim=128, tokens_mlp_dim=32, n_blocks=4)
+        model = MlpMixer(patch_size=8, n_tokens=16, **config.model_args)
 
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -124,6 +124,13 @@ def train_with_config(config, base_dir=None):
             logits = model(batch)
             loss = F.cross_entropy(logits, labels)
             loss.backward()
+            with torch.no_grad():
+                grad_norm = 0
+                for param in model.parameters():
+                    grad_norm += torch.linalg.norm(param.grad.data).cpu() ** 2
+                grad_norm = torch.sqrt(grad_norm)
+            if config.gradient_clipping is not None:
+                clip_grad_norm_(model.parameters(), max_norm=config.gradient_clipping)
             optimizer.step()
             step += 1
 
@@ -133,11 +140,6 @@ def train_with_config(config, base_dir=None):
             writer.add_scalar('Duration/example_ms',
                               duration_ms / batch.shape[0], step)
             writer.add_scalar('Loss/train', loss.item(), step)
-            with torch.no_grad():
-                grad_norm = 0
-                for param in model.parameters():
-                    grad_norm += torch.linalg.norm(param.grad.data).cpu() ** 2
-                grad_norm = torch.sqrt(grad_norm)
             writer.add_scalar('grad_norm', grad_norm.item(), step)
 
         # Save training state.
