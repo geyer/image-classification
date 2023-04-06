@@ -15,6 +15,7 @@ def trial_config(model_type='MLP'):
     trial.momentum = 0.9
     trial.weight_decay = 0.0
     trial.gradient_clipping = None
+    trial.lr_schedule = None
     trial.trial_name = 'default'
     trial.model_type = ''
     trial.model_args = ml_collections.ConfigDict()
