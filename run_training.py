@@ -129,8 +129,8 @@ def train_with_config(config, base_dir=None):
         writer.add_scalar('learning_rate', lr, step)
 
         model.train()
+        timestamp_ns = time.perf_counter_ns()
         for batch, labels in train_data:
-            start = time.perf_counter_ns()
             batch = batch.to(
                 device, memory_format=torch.channels_last, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
@@ -150,13 +150,14 @@ def train_with_config(config, base_dir=None):
             optimizer.step()
             step += 1
 
-            stop = time.perf_counter_ns()
-            duration_ms = (stop - start) / 1e6
+            writer.add_scalar('Loss/train', loss.item(), step)
+            writer.add_scalar('grad_norm', grad_norm.item(), step)
+            now = time.perf_counter_ns()
+            timestamp_ns, duration_ms = now, (now - timestamp_ns) / 1e6
             writer.add_scalar('Duration/step_ms', duration_ms, step)
             writer.add_scalar('Duration/example_ms',
                               duration_ms / batch.shape[0], step)
-            writer.add_scalar('Loss/train', loss.item(), step)
-            writer.add_scalar('grad_norm', grad_norm.item(), step)
+
         if scheduler:
             scheduler.step()
 
