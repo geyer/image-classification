@@ -69,7 +69,10 @@ def train_with_config(config, base_dir=None):
     elif config.model_type == 'ResNet':
         model = ResidualNet()
     elif config.model_type == 'MlpMixer':
-        model = MlpMixer(patch_size=8, n_tokens=16, **config.model_args)
+        image_size = 32
+        patch_size = config.model_args.patch_size
+        n_tokens = (image_size * image_size) // (patch_size * patch_size)
+        model = MlpMixer(n_tokens=n_tokens, **config.model_args)
 
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -85,8 +88,8 @@ def train_with_config(config, base_dir=None):
     if config.lr_schedule == 'linear_decay':
         scheduler = LinearLR(optimizer, start_factor=1.0, end_factor=0.01,
                              total_iters=config.epochs)
-        if checkpoint is not None:
-            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    if scheduler is not None and checkpoint is not None:
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
     with torch.no_grad():
         sample_batch, _ = next(iter(train_data))

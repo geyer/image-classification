@@ -25,8 +25,9 @@ def trial_config(model_type='MLP'):
         trial.model_args.p_dropout = None
     elif model_type == 'MlpMixer':
         trial.model_type = 'MlpMixer'
-        trial.model_args.n_blocks = 8
+        trial.model_args.patch_size = 8
         trial.model_args.n_channels = 64
+        trial.model_args.n_blocks = 8
         trial.model_args.channels_mlp_dim = 128
         trial.model_args.tokens_mlp_dim = 32
         trial.model_args.p_dropout = None
