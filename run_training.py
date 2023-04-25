@@ -13,7 +13,7 @@ import torch
 from torch import optim
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
-from torch.optim.lr_scheduler import LinearLR
+from torch.optim.lr_scheduler import LinearLR, StepLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -103,6 +103,8 @@ def train_with_config(config, base_dir=None):
     if config.lr_schedule == 'linear_decay':
         scheduler = LinearLR(optimizer, start_factor=1.0, end_factor=0.01,
                              total_iters=config.epochs)
+    elif config.lr_schedule == 'step_decay':
+        scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
     if scheduler is not None and checkpoint is not None:
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
@@ -204,10 +206,14 @@ def train_with_config(config, base_dir=None):
 
 
 if __name__ == '__main__':
-    config = trial_config('MlpMixer')
-    config.model_args.p_dropout = 0.1
+    config = trial_config('ResNet')
+    config.trial_name = 'resnet_mixup'
+    config.epochs = 100
+    config.learning_rate = 0.1
+    config.lr_schedule = 'step_decay'
+    config.momentum = 0.9
     config.weight_decay = 0.001
-    config.gradient_clipping = 1.5
-    config.epochs = 300
-    config.lr_schedule = 'linear_decay'
+    config.mixup_alpha = 1.0
+    config.checkpoint_after_episodes = 10
+
     train_with_config(config)

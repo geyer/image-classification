@@ -68,18 +68,24 @@ class ResidualNet(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             # Size 32x32
-            nn.Conv2d(3, 16, kernel_size=3, padding=1),
-            ResidualBlock(16),
-            ResidualBlock(16),
-            # Scale to 16x16
-            ResidualBlock(32, double_dim=True),
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
             ResidualBlock(32),
-            # Scale to 8x8
+            ResidualBlock(32),
+            ResidualBlock(32),
+            ResidualBlock(32),
+            # Scale to 16x16
             ResidualBlock(64, double_dim=True),
             ResidualBlock(64),
+            ResidualBlock(64),
+            ResidualBlock(64),
+            # Scale to 8x8
+            ResidualBlock(128, double_dim=True),
+            ResidualBlock(128),
+            ResidualBlock(128),
+            ResidualBlock(128),
             nn.AvgPool2d(kernel_size=8),
             nn.Flatten(),
-            nn.Linear(64, 10),
+            nn.Linear(128, 10),
         )
 
     def forward(self, x):
