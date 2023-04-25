@@ -45,20 +45,21 @@ class ResidualBlock(nn.Module):
                                         kernel_size=1, stride=2)
 
         self.layers = nn.Sequential(
+            nn.BatchNorm2d(in_channels),
+            nn.ReLU(),
             nn.Conv2d(in_channels, n_channels,
                       kernel_size=3, stride=first_stride, padding=1),
             nn.BatchNorm2d(n_channels),
             nn.ReLU(),
             nn.Conv2d(n_channels, n_channels,
                       kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(n_channels),
         )
 
     def forward(self, x):
         y = self.layers(x)
         if self.projection is not None:
             x = self.projection(x)
-        return F.relu(y + x)
+        return x + y
 
 
 class ResidualNet(nn.Module):
