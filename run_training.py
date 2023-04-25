@@ -46,6 +46,21 @@ def load_dataset(root='~/datasets', batch_size=64):
     return (train_loader, test_loader)
 
 
+def mixup(batch, labels, alpha=1.0):
+    """Returns (batch, labels) after applying mixup to the given batch."""
+    n_batch = batch.shape[0]
+    device = batch.device
+    beta = torch.distributions.Beta(
+        torch.tensor([alpha]), torch.tensor([alpha]))
+    lam = beta.sample((n_batch,)).to(device, non_blocking=True)
+    perm = torch.randperm(n_batch, device=device)
+    lam = lam.reshape(-1, 1, 1, 1)
+    batch = lam * batch + (1-lam) * batch[perm]
+    lam = lam.reshape(-1, 1)
+    labels = lam * labels + (1-lam) * labels[perm]
+    return (batch, labels)
+
+
 def train_with_config(config, base_dir=None):
     if base_dir is None:
         base_dir = './trials'
@@ -137,6 +152,10 @@ def train_with_config(config, base_dir=None):
             batch = batch.to(
                 device, memory_format=torch.channels_last, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
+            # Use onehot encoding to support mixup (interpolated targets).
+            labels = torch.nn.functional.one_hot(labels, num_classes=10)
+            if config.mixup_alpha:
+                batch, labels = mixup(batch, labels, config.mixup_alpha)
 
             optimizer.zero_grad(set_to_none=True)
             logits = model(batch)
